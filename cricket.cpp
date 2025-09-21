@@ -1,213 +1,436 @@
-//C++ Cricket Test  :just copy paste into c++ online compiler and run for output 
 
+// Cricket Match Simulation
+//Player Hierarchy :Defines the base classes and derived classes for players in cricket match
+//Cricket Match(Player ,Batter,Bowler ,Wk,All rounder)
+// Class Based approach and Polymorphic behaviour 
+
+/*---------------------------------------------------------------------------*/
+#include <cassert>
+#include <iomanip>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
-#include <iomanip>
-using namespace std;
 
-// Base Class: Person
-class Person {
+// ------------------------
+// Abstract Base: Player
+// ------------------------
+class Player {
+public:
+    explicit Player(const std::string& name) : name_(name) {}
+    virtual ~Player() = default;
+
+    const std::string& Name() const noexcept { return name_; }
+
+    virtual void PrintBattingLine(int idx = -1) const = 0;
+    virtual void PrintBowlingLine() const = 0;
+
+    virtual bool CanBat() const noexcept = 0;
+    virtual bool CanBowl() const noexcept = 0;
+
+    virtual int Runs() const noexcept { return 0; }
+    virtual int BallsFaced() const noexcept { return 0; }
+    virtual bool IsOut() const noexcept { return false; }
+    virtual const std::string& Dismissal() const {
+        static std::string s = "";
+        return s;
+    }
+
+    virtual int BallsBowled() const noexcept { return 0; }
+    virtual int RunsConceded() const noexcept { return 0; }
+    virtual int Wickets() const noexcept { return 0; }
+
 protected:
-    string name;
-public:
-    Person(const string &n) : name(n) {}
-    string getName() const { return name; }
+    std::string name_;
 };
 
-// Player Class
-class Player : public Person {
+// ------------------------
+// Batter
+// ------------------------
+class Batter : virtual public Player {
+public:
+    explicit Batter(const std::string& name)
+        : Player(name), runs_(0), balls_(0), out_(false), dismissal_("Not Out") {}
+
+    void SetBatting(int runs, int balls, bool out, const std::string& dismissal = "") {
+        runs_ = runs;
+        balls_ = balls;
+        out_ = out;
+        dismissal_ = out ? (dismissal.empty() ? "Out" : dismissal) : "Not Out";
+    }
+
+    void PrintBattingLine(int idx = -1) const override {
+        std::string label = (idx >= 0 ? std::to_string(idx) + " " : "") + name_;
+        std::cout << std::left << std::setw(22) << label
+                  << std::setw(6) << runs_
+                  << std::setw(6) << balls_
+                  << std::setw(24) << (out_ ? dismissal_ : "Not Out")
+                  << '\n';
+    }
+
+    void PrintBowlingLine() const override {}
+
+    bool CanBat() const noexcept override { return true; }
+    bool CanBowl() const noexcept override { return false; }
+
+    int Runs() const noexcept override { return runs_; }
+    int BallsFaced() const noexcept override { return balls_; }
+    bool IsOut() const noexcept override { return out_; }
+    const std::string& Dismissal() const override { return dismissal_; }
+
+protected:
+    int runs_;
+    int balls_;
+    bool out_;
+    std::string dismissal_;
+};
+
+// ------------------------
+// Bowler
+// ------------------------
+class Bowler : virtual public Player {
+public:
+    explicit Bowler(const std::string& name)
+        : Player(name), balls_bowled_(0), runs_conceded_(0), wickets_(0) {}
+
+    void SetBowling(int balls, int runs, int wkts) {
+        balls_bowled_ = balls;
+        runs_conceded_ = runs;
+        wickets_ = wkts;
+    }
+
+    void PrintBowlingLine() const override {
+        int overs = balls_bowled_ / 6;
+        int rem = balls_bowled_ % 6;
+        std::string oversStr = std::to_string(overs) + "." + std::to_string(rem);
+        std::cout << std::left << std::setw(20) << name_
+                  << std::setw(8) << oversStr
+                  << std::setw(8) << runs_conceded_
+                  << std::setw(6) << wickets_
+                  << '\n';
+    }
+
+    void PrintBattingLine(int) const override {}
+
+    bool CanBat() const noexcept override { return false; }
+    bool CanBowl() const noexcept override { return true; }
+
+    int BallsBowled() const noexcept override { return balls_bowled_; }
+    int RunsConceded() const noexcept override { return runs_conceded_; }
+    int Wickets() const noexcept override { return wickets_; }
+
+protected:
+    int balls_bowled_;
+    int runs_conceded_;
+    int wickets_;
+};
+
+// ------------------------
+// WicketKeeper
+// ------------------------
+class WicketKeeper : public Batter {
+public:
+    explicit WicketKeeper(const std::string& name)
+        : Player(name), Batter(name), catches_(0), stumpings_(0) {}
+
+    void SetCatches(int c) { catches_ = c; }
+    void SetStumpings(int s) { stumpings_ = s; }
+
+    void PrintBattingLine(int idx = -1) const override {
+        std::string label = (idx >= 0 ? std::to_string(idx) + " " : "") + name_ + " (WK)";
+        std::cout << std::left << std::setw(22) << label
+                  << std::setw(6) << runs_
+                  << std::setw(6) << balls_
+                  << std::setw(24) << (out_ ? dismissal_ : "Not Out")
+                  << '\n';
+    }
+
 private:
-    string role;
-    int runs;
-    int balls;
-    bool isOut;
-    string outReason; // out status
-public:
-    Player(const string &n, const string &r)
-        : Person(n), role(r), runs(0), balls(0), isOut(false), outReason("Not Out") {}
-
-    void addRuns(int r, int b = 1) { runs += r; balls += b; }
-    void setOut(const string &reason) { isOut = true; outReason = reason; }
-
-    string getRole() const { return role; }
-    int getRuns() const { return runs; }
-    int getBalls() const { return balls; }
-    bool getOutStatus() const { return isOut; }
-    string getOutReason() const { return outReason; }
+    int catches_;
+    int stumpings_;
 };
 
-// Bowler Class
-class Bowler {
-private:
-    string name;
-    float overs;
-    int runsConceded;
-    int wickets;
-
+// ------------------------
+// AllRounder
+// ------------------------
+class AllRounder : public Batter, public Bowler {
 public:
-    Bowler(const string &n) : name(n), overs(0.0f), runsConceded(0), wickets(0) {}
+    explicit AllRounder(const std::string& name)
+        : Player(name), Batter(name), Bowler(name) {}
 
-    string getName() const { return name; }
-    float getOvers() const { return overs; }
-    int getRunsConceded() const { return runsConceded; }
-    int getWickets() const { return wickets; }
+    void PrintBattingLine(int idx = -1) const override { Batter::PrintBattingLine(idx); }
+    void PrintBowlingLine() const override { Bowler::PrintBowlingLine(); }
 
-    void setOvers(float o) { overs = o; }
-    void setRuns(int r) { runsConceded = r; }
-    void setWickets(int w) { wickets = w; }
+    bool CanBat() const noexcept override { return true; }
+    bool CanBowl() const noexcept override { return true; }
 };
 
-// Umpire Class
-class Umpire : public Person {
-private:
-    string category; //third umpire or ground umpire
-    string country;
-
-public:
-    Umpire(const string &n, const string &c, const string& co) : Person(n), category(c), country(co) {}
-
-    string getCategory() const { return category; }
-    string getCountry() const { return country; }
-};
-
-// Team Class
+// ------------------------
+// Team
+// ------------------------
 class Team {
-private:
-    string teamName;
-    vector<Player> players;
-    vector<Bowler> bowlers;
-    int totalRuns;
-    int totalWickets;
-    float overs;
-
 public:
-    Team(const string &n) : teamName(n), totalRuns(0), totalWickets(0), overs(0.0f) {}
+    explicit Team(std::string name, int maxOvers = 5)
+        : name_(std::move(name)), maxOvers_(maxOvers), maxBalls_(maxOvers * 6) {}
 
-    void addPlayer(const Player &p) { players.push_back(p); }
-    void addBowler(const Bowler &b) { bowlers.push_back(b); }
-
-    void updatePlayerScore(const string &playerName, int runs, int balls, bool isOut, const string &reason = "") {
-        for (auto &p : players) {
-            if (p.getName() == playerName) {
-                p.addRuns(runs, balls);
-                totalRuns += runs;
-                if (isOut) {
-                    p.setOut(reason.empty() ? "Out" : reason);
-                    totalWickets++;
-                }
-                return;
-            }
-        }
-
-        Player newP(playerName, "Batsman");
-        newP.addRuns(runs, balls);
-        if (isOut) { newP.setOut(reason.empty() ? "Out" : reason); totalWickets++; }
-        players.push_back(newP);
-        totalRuns += runs;
+    Batter* AddBatter(const std::string& name) {
+        auto up = std::make_unique<Batter>(name);
+        Batter* p = up.get();
+        players_.push_back(std::move(up));
+        return p;
     }
 
-    void updateBowler(const string &bowlerName, float o, int r, int w) {
-        for (auto &b : bowlers) {
-            if (b.getName() == bowlerName) {
-                b.setOvers(o);
-                b.setRuns(r);
-                b.setWickets(w);
-                return;
+    Bowler* AddBowler(const std::string& name) {
+        auto up = std::make_unique<Bowler>(name);
+        Bowler* p = up.get();
+        players_.push_back(std::move(up));
+        return p;
+    }
+
+    WicketKeeper* AddWicketKeeper(const std::string& name) {
+        auto up = std::make_unique<WicketKeeper>(name);
+        WicketKeeper* p = up.get();
+        players_.push_back(std::move(up));
+        return p;
+    }
+
+    AllRounder* AddAllRounder(const std::string& name) {
+        auto up = std::make_unique<AllRounder>(name);
+        AllRounder* p = up.get();
+        players_.push_back(std::move(up));
+        return p;
+    }
+
+    void PrintBattingCard(const std::vector<Player*>& order) const {
+        std::cout << "---- " << name_ << " Batting ----\n";
+        std::cout << std::left << std::setw(22) << "Batter"
+                  << std::setw(6) << "R"
+                  << std::setw(6) << "B"
+                  << std::setw(24) << "Status" << '\n';
+        std::cout << std::string(66, '-') << '\n';
+
+        int idx = 1;
+        for (auto* p : order) {
+            p->PrintBattingLine(idx++);
+        }
+
+        std::cout << std::string(66, '-') << '\n';
+        int runs = 0, wkts = 0, balls = 0;
+        for (const auto& u : players_) {
+            runs += u->Runs();
+            balls += u->BallsFaced();
+            if (u->IsOut()) ++wkts;
+        }
+
+        int overs = balls / 6;
+        int rem = balls % 6;
+        if (rem == 0)
+            std::cout << "Total: " << runs << " - " << wkts << " (" << overs << " Overs)\n\n";
+        else
+            std::cout << "Total: " << runs << " - " << wkts << " (" << overs << "." << rem << " Overs)\n\n";
+    }
+
+    void PrintBowlingCard() const {
+        std::cout << "---- " << name_ << " Bowling ----\n";
+        std::cout << std::left << std::setw(20) << "Bowler"
+                  << std::setw(8) << "O"
+                  << std::setw(8) << "R"
+                  << std::setw(6) << "W" << '\n';
+        std::cout << std::string(66, '-') << '\n';
+
+        for (const auto& u : players_) {
+            if (u->CanBowl() && u->BallsBowled() > 0) {
+                u->PrintBowlingLine();
             }
         }
-        Bowler nb(bowlerName);
-        nb.setOvers(o);
-        nb.setRuns(r);
-        nb.setWickets(w);
-        bowlers.push_back(nb);
+        std::cout << '\n';
     }
-// wanted to have limited fix 5 overs
-    void setOvers(float o) { overs = o; }
 
-    void showScorecard() const {
-        cout << "\n---- " << teamName << " Scorecard ----\n";
-        cout << left << setw(22) << "Batter"
-             << setw(10) << "Role"
-             << setw(8) << "R"
-             << setw(8) << "B"
-             << setw(20) << "Status" << '\n';
-        cout << "------------------------------------------------------------------\n";
-        for (const auto &p : players) {
-            cout << left << setw(22) << p.getName()
-                 << setw(10) << p.getRole()
-                 << setw(8) << p.getRuns()
-                 << setw(8) << p.getBalls()
-                 << setw(20) << (p.getOutStatus() ? p.getOutReason() : "Not Out")
-                 << '\n';
-        }
-        cout << "------------------------------------------------------------------\n";
-        cout << "Total: " << totalRuns << " - " << totalWickets
-             << " (" << fixed << setprecision(1) << overs << " Overs)\n";
-
-        if (!bowlers.empty()) {
-            cout << "\nBowler summary:\n";
-            cout << left << setw(18) << "Bowler"
-                 << setw(8) << "O"
-                 << setw(8) << "R"
-                 << setw(8) << "W" << '\n';
-            for (const auto &b : bowlers) {
-                cout << left << setw(18) << b.getName()
-                     << setw(8) << fixed << setprecision(1) << b.getOvers()
-                     << setw(8) << b.getRunsConceded()
-                     << setw(8) << b.getWickets()
-                     << '\n';
-            }
-        }
+    int TotalRuns() const {
+        int s = 0;
+        for (auto& u : players_) s += u->Runs();
+        return s;
     }
+
+    int TotalWickets() const {
+        int c = 0;
+        for (auto& u : players_) if (u->IsOut()) ++c;
+        return c;
+    }
+
+    int TotalBallsFaced() const {
+        int s = 0;
+        for (auto& u : players_) s += u->BallsFaced();
+        return s;
+    }
+
+private:
+    std::string name_;
+    int maxOvers_;
+    int maxBalls_;
+    std::vector<std::unique_ptr<Player>> players_;
 };
 
-// Function to display match information
-void showMatchInfo(const string &venue, const string &matchVs, const Umpire &umpire) {
-    cout << "\n---- Match Information ----\n";
-    cout << "Venue: " << venue << "\n";
-    cout << "Match: " << matchVs << "\n";
-    cout << "Umpire: " << umpire.getName() << " (" << umpire.getCategory() << ") - " << umpire.getCountry() << "\n";
-    cout << "---------------------------\n";
+// ------------------------
+// Match Helper
+// ------------------------
+std::string DetermineWinner(const Team& first, const Team& second,
+                            const std::string& firstName, const std::string& secondName) {
+    int runsFirst = first.TotalRuns();
+    int runsSecond = second.TotalRuns();
+    int wktsSecond = second.TotalWickets();
+
+    if (runsFirst > runsSecond) {
+        int margin = runsFirst - runsSecond;
+        return firstName + " win by " + std::to_string(margin) + " runs";
+    } else if (runsSecond > runsFirst) {
+        int wktsRemaining = 10 - wktsSecond;
+        return secondName + " win by " + std::to_string(wktsRemaining) + " wkts";
+    } else {
+        return "Match tied";
+    }
 }
 
+// ------------------------
+// Improved Test Framework
+// ------------------------
+void RunTest(const std::string& name, const std::string& got, const std::string& expected) {
+    if (got == expected)
+        std::cout << "[PASS] " << name << " -> " << got << "\n";
+    else
+        std::cout << "[FAIL] " << name << " (got: " << got << ", expected: " << expected << ")\n";
+}
+
+// ------------------------
 // Main
+// ------------------------
 int main() {
-    // Team India
-    Team india("India");
-    india.addPlayer(Player("Abhishek Sharma", "Batsman"));
-    india.addPlayer(Player("Shubman Gill", "Batsman"));
-    india.addPlayer(Player("Suryakumar Yadav", "Batsman"));
-    india.addBowler(Bowler("Malinga")); // to display under India summary
+    // -------------------- Scenario 1: India vs SL --------------------
+    Team india("India XI");
+    Team sl("Sri Lanka XI");
 
-    // Team Sri Lanka
-    Team sl("Sri Lanka");
-    sl.addPlayer(Player("Kusal Mendis", "Batsman"));
-    sl.addPlayer(Player("Pathum Nissanka", "Batsman"));
-    sl.addBowler(Bowler("Bumrah"));
+    WicketKeeper* kishan = india.AddWicketKeeper("Ishan Kishan");
+    kishan->SetBatting(15, 8, true, "b Malinga");
 
-    // Umpire
-    Umpire paulRiffel("Paul Riffel", "Field Umpire", "Aus");
+    AllRounder* hardik = india.AddAllRounder("Hardik Pandya");
+    hardik->SetBatting(22, 8, false);
 
-    // Show match info BEFORE scorecards
-    showMatchInfo("Wankhede Stadium, Mumbai", "India vs Sri Lanka", paulRiffel);
+    Batter* sky = india.AddBatter("Suryakumar Yadav");
+    sky->SetBatting(7, 2, false);
 
-    // IND innings
-    india.updatePlayerScore("Abhishek Sharma", 30, 16, true, "c Kusal b Malinga");
-    india.updatePlayerScore("Shubman Gill", 20, 9, false);
-    india.updatePlayerScore("Suryakumar Yadav", 7, 2, false);
-    india.setOvers(5.0f);
-    india.updateBowler("Malinga", 3.0f, 35, 1);  // Expected stats
+    Bowler* malinga = india.AddBowler("Malinga");
+    malinga->SetBowling(12, 25, 1);
 
-    // SL innings
-    sl.updatePlayerScore("Kusal Mendis", 18, 12, true, "c Gill b Bumrah");
-    sl.updatePlayerScore("Pathum Nissanka", 22, 18, false);
-    sl.setOvers(5.0f);
-    sl.updateBowler("Bumrah", 3.0f, 28, 1);     // Expected stats
+    Batter* mendis = sl.AddBatter("Kusal Mendis");
+    mendis->SetBatting(18, 10, true, "c Gill b Bumrah");
 
-    // Show scorecards
-    india.showScorecard();
-    sl.showScorecard();
+    Batter* nissanka = sl.AddBatter("Pathum Nissanka");
+    nissanka->SetBatting(22, 8, false);
+
+    Bowler* bumrah = sl.AddBowler("Bumrah");
+    bumrah->SetBowling(12, 28, 1);
+
+    // Print scorecards
+    std::cout << "---- Match Information ----\n";
+    std::cout << "Venue : Wankhede Stadium, Mumbai\n";
+    std::cout << "Match : India vs Sri Lanka\n";
+    std::cout << "Umpire: Paul Riffel (Field Umpire) - Aus\n";
+    std::cout << "---------------------------\n\n";
+
+    india.PrintBattingCard({kishan, hardik, sky});
+    india.PrintBowlingCard();
+
+    sl.PrintBattingCard({mendis, nissanka});
+    sl.PrintBowlingCard();
+
+    std::string result1 = DetermineWinner(india, sl, "India", "Sri Lanka");
+    std::cout << "Result: " << result1 << "\n\n";
+
+    // Tests
+    RunTest("India vs SL winner", result1, "India win by 4 runs");
+    RunTest("India runs", std::to_string(india.TotalRuns()), "44");
+    RunTest("India balls", std::to_string(india.TotalBallsFaced()), "18");
+    RunTest("SL runs", std::to_string(sl.TotalRuns()), "40");
+    RunTest("SL balls", std::to_string(sl.TotalBallsFaced()), "18");
+
+    // -------------------- Scenario 2: Chase successful --------------------
+    Team teamA("Team A");
+    Team teamB("Team B");
+
+    Batter* a1 = teamA.AddBatter("A1");
+    a1->SetBatting(30, 15, true);
+
+    Batter* a2 = teamA.AddBatter("A2");
+    a2->SetBatting(20, 10, false);
+
+    Batter* b1 = teamB.AddBatter("B1");
+    b1->SetBatting(40, 20, false);
+
+    std::string result2 = DetermineWinner(teamA, teamB, "Team A", "Team B");
+    RunTest("Chase successful", result2, "Team B win by 10 wkts");
+
+    // -------------------- Scenario 3: Tie --------------------
+    Team teamC("Team C");
+    Team teamD("Team D");
+
+    Batter* c1 = teamC.AddBatter("C1");
+    c1->SetBatting(25, 12, false);
+
+    Batter* d1 = teamD.AddBatter("D1");
+    d1->SetBatting(25, 12, false);
+
+    std::string result3 = DetermineWinner(teamC, teamD, "Team C", "Team D");
+    RunTest("Match tie", result3, "Match tied");
 
     return 0;
 }
+
+
+/*--------------------------------------------OUTPUT-----------------------------------*/
+/*
+---- Match Information ----
+Venue : Wankhede Stadium, Mumbai
+Match : India vs Sri Lanka
+Umpire: Paul Riffel (Field Umpire) - Aus
+---------------------------
+
+---- India XI Batting ----
+Batter                R     B     Status                  
+------------------------------------------------------------------
+1 Ishan Kishan (WK)   15    8     b Malinga               
+2 Hardik Pandya       22    8     Not Out                 
+3 Suryakumar Yadav    7     2     Not Out                 
+------------------------------------------------------------------
+Total: 44 - 1 (3 Overs)
+
+---- India XI Bowling ----
+Bowler              O       R       W     
+------------------------------------------------------------------
+Malinga             2.0     25      1     
+
+---- Sri Lanka XI Batting ----
+Batter                R     B     Status                  
+------------------------------------------------------------------
+1 Kusal Mendis        18    10    c Gill b Bumrah         
+2 Pathum Nissanka     22    8     Not Out                 
+------------------------------------------------------------------
+Total: 40 - 1 (3 Overs)
+
+---- Sri Lanka XI Bowling ----
+Bowler              O       R       W     
+------------------------------------------------------------------
+Bumrah              2.0     28      1     
+
+Result: India win by 4 runs
+
+[PASS] India vs SL winner -> India win by 4 runs
+[PASS] India runs -> 44
+[PASS] India balls -> 18
+[PASS] SL runs -> 40
+[PASS] SL balls -> 18
+[FAIL] Chase successful (got: Team A win by 10 runs, expected: Team B win by 10 wkts)
+[PASS] Match tie -> Match tied
+
+
+=== Code Execution Successful ===
+*/
