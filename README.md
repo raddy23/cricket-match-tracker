@@ -2,7 +2,7 @@
 Project focused on managing and displaying scorecard
 
 Note:
-C++ cricket game is present in cricket_match.cpp file 
+C++ cricket game is present in cricket.cpp file 
 
 Procedure: 
 1] Copy and paste this program into online c++ compiler 
